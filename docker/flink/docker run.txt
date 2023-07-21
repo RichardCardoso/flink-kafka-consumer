@@ -1,0 +1,3 @@
+docker run -d --rm --name=jobmanager --network kafka_broker-kafka --publish 8081:8081 --env FLINK_PROPERTIES="jobmanager.rpc.address: jobmanager" flink:latest jobmanager
+
+docker run -d --rm --name=taskmanager --network kafka_broker-kafka --env FLINK_PROPERTIES="jobmanager.rpc.address: jobmanager" flink:latest taskmanager

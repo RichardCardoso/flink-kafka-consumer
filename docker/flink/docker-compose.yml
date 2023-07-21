@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  jobmanager:
+    image: flink:latest
+    container_name: jobmanager
+    command: jobmanager
+    environment:
+      FLINK_PROPERTIES: "jobmanager.rpc.address: jobmanager"
+    networks:
+      - kafka_broker-kafka
+    ports:
+      - "8081:8081"
+    deploy:
+      replicas: 1
+
+  taskmanager:
+    image: flink:latest
+    container_name: taskmanager
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: "jobmanager.rpc.address: jobmanager"
+    networks:
+      - kafka_broker-kafka
+    deploy:
+      replicas: 1
+
+networks:
+  kafka_broker-kafka:
+    external: true
