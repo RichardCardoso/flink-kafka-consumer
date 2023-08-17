@@ -4,8 +4,9 @@ import com.jayway.jsonpath.JsonPath;
 import misc.Constants;
 import misc.Operator;
 import models.ControlMessage;
-import models.FilteredEvent;
-import org.apache.flink.shaded.guava30.com.google.common.base.Strings;
+import models.LiveMessage;
+import models.NotificationCandidate;
+import models.WindowElement;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
@@ -13,25 +14,25 @@ import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-public class MyProcessAllWindowFunction extends ProcessAllWindowFunction<FilteredEvent, String, TimeWindow> {
+public class MyProcessAllWindowFunction extends ProcessAllWindowFunction<WindowElement, NotificationCandidate, TimeWindow> {
 
     private final static Logger log = LoggerFactory.getLogger(MyProcessAllWindowFunction.class);
 
     @Override
-    public void process(Context context, Iterable<FilteredEvent> elements, Collector<String> collector) throws Exception {
+    public void process(Context context, Iterable<WindowElement> elements, Collector<NotificationCandidate> collector) throws Exception {
 
         int total = 0, matching = 0;
         double matchingPercent = 0;
         ControlMessage control = null;
+        List<LiveMessage> liveMessages = new ArrayList<>();
         List<String> values = new ArrayList<>();
 
-        for (FilteredEvent element : elements) {
+        for (WindowElement element : elements) {
             total++;
             ObjectMapper mapper = new ObjectMapper();
             String json = mapper.writeValueAsString(element.getLiveMessage());
@@ -47,6 +48,7 @@ public class MyProcessAllWindowFunction extends ProcessAllWindowFunction<Filtere
             } else {
 //                values.add("");
             }
+            liveMessages.add(element.getLiveMessage());
             values.add(element.getLiveMessage().getReceivedTime() + "|" + element.getLiveMessage().getValue());
         }
 
@@ -65,12 +67,12 @@ public class MyProcessAllWindowFunction extends ProcessAllWindowFunction<Filtere
                     matchingPercent, matching, total, sStart, sEnd, sMax, values
             );
             if (matchingPercent >= control.getThresholdPercent()) {
-                sDebug = "value was over threshold during the window" + sDebug;
+//                sDebug = "value was over threshold during the window" + sDebug;
+                collector.collect(new NotificationCandidate(liveMessages, control, matchingPercent));
             } else {
-                sDebug = "NO" + sDebug;
+//                sDebug = "NO" + sDebug;
             }
-            log.info(sDebug);
-            collector.collect(sDebug);
+//            log.info(sDebug);
         }
     }
 
