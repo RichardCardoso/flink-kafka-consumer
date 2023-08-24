@@ -1,8 +1,8 @@
 package functions;
 
-import models.ControlMessage;
-import models.FilteredEvent;
 import models.LiveMessage;
+import models.WindowElement;
+import models.control.ControlMessage;
 import org.apache.flink.streaming.api.functions.co.RichCoFlatMapFunction;
 import org.apache.flink.util.Collector;
 
@@ -10,19 +10,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class FilterFunction extends RichCoFlatMapFunction<ControlMessage, LiveMessage, FilteredEvent> {
+public class FilterFunction extends RichCoFlatMapFunction<ControlMessage, LiveMessage, WindowElement> {
 
     static AtomicReference<List<ControlMessage>> configs = new AtomicReference<>(new ArrayList<>());
 
     @Override
-    public void flatMap1(ControlMessage controlMessage, Collector<FilteredEvent> collector) throws Exception {
+    public void flatMap1(ControlMessage controlMessage, Collector<WindowElement> collector) throws Exception {
 
         configs.get().removeIf(x -> (x.getCustomerId().equals(controlMessage.getCustomerId()) && x.getAlertId().equals(controlMessage.getAlertId())));
         configs.get().add(controlMessage);
     }
 
     @Override
-    public void flatMap2(LiveMessage s, Collector<FilteredEvent> collector) throws Exception {
+    public void flatMap2(LiveMessage s, Collector<WindowElement> collector) throws Exception {
 
         List<ControlMessage> controlMessages;
 
@@ -31,7 +31,7 @@ public class FilterFunction extends RichCoFlatMapFunction<ControlMessage, LiveMe
         controlMessages = new ArrayList<>(configs.get());
 
         for (ControlMessage config : controlMessages) {
-            collector.collect(new FilteredEvent(s, config));
+            collector.collect(new WindowElement(s, config));
         }
 
     }

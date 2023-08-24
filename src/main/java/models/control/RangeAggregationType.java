@@ -1,4 +1,4 @@
-package models;
+package models.control;
 
 public enum RangeAggregationType {
 

@@ -1,19 +1,23 @@
-import functions.GenericWindowAssigner;
-import functions.MyBroadcastProcessFunction;
-import functions.MyProcessAllWindowFunction;
+import functions.ControlBasedWindowAssigner;
+import functions.ControlBroadcastFunction;
+import functions.FullWindowResultsProcessor;
+import functions.JsonPathMatcherFunction;
 import misc.BroadcastStateDescriptor;
 import misc.MyWatermarkStrategyFactory;
 import models.LiveMessage;
+import models.NotificationCandidate;
+import models.WindowElement;
+import models.control.ControlMessage;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.streaming.api.datastream.BroadcastStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import models.ControlMessage;
-import models.FilteredEvent;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +28,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
+
+import static misc.Constants.ALLOWED_LATENESS_IN_SECS;
 
 public class KafkaFlinkConsumerApplication {
 
@@ -45,50 +51,61 @@ public class KafkaFlinkConsumerApplication {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.enableCheckpointing(15000);
         CheckpointConfig checkpointConfig = env.getCheckpointConfig();
+        checkpointConfig.setMinPauseBetweenCheckpoints(500);
         checkpointConfig.setCheckpointTimeout(60000);
         checkpointConfig.setMaxConcurrentCheckpoints(1);
-        checkpointConfig.setCheckpointStorage("file:///tmp/flink/checkpoints");
+        checkpointConfig.setExternalizedCheckpointCleanup(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
+        checkpointConfig.enableUnalignedCheckpoints();
+        if (SystemUtils.IS_OS_WINDOWS) {
+            checkpointConfig.setCheckpointStorage("file:///c:/users/public/flink/checkpoints");
+        } else {
+            checkpointConfig.setCheckpointStorage("file:///var/flink/checkpoints");
+        }
 
         // DataSource
-        DataStream<LiveMessage> numbers = env
+        DataStream<LiveMessage> liveMessages = env
                 .fromSource(
                         new Consumer<LiveMessage, LiveMessageSchema>().consumer(params, "live", "flink-test", new LiveMessageSchema(), OffsetsInitializer.latest()),
                         WatermarkStrategy.noWatermarks(),
-                        "KafkaSource"
-                );
+                        "KafkaLiveDataSource"
+                ).name("LiveDataSource");
 
         // ControlSource
-        DataStream<ControlMessage> controlSource = env
+        DataStream<ControlMessage> controlMessages = env
                 .fromSource(
-                        new Consumer<ControlMessage, ControlMessageSchema>().consumer(params, "control", "flink-test", new ControlMessageSchema(), OffsetsInitializer.earliest()),
+                        new Consumer<ControlMessage, ControlMessageSchema>().consumer(params, "control", "flink-test", new ControlMessageSchema(), OffsetsInitializer.latest()),
                         WatermarkStrategy.noWatermarks(),
                         "KafkaControlSource"
                 )
                 .filter(Objects::nonNull)
-                .filter(c -> Objects.nonNull(c.getCustomerId()))
+                .filter(c -> Objects.nonNull(c.getCustomerId()) && c.getCustomerId() > 0L)
                 .name("ControlSource");
 
-        controlSource.print();
+        controlMessages.print();
 
-        // Broadcasts global rules
-        BroadcastStream<ControlMessage> broadcast = controlSource.broadcast(BroadcastStateDescriptor.getControlStateDescriptor());
+        // Broadcasts control rules
+        BroadcastStream<ControlMessage> broadcast = controlMessages.broadcast(BroadcastStateDescriptor.getControlStateDescriptor());
 
-        KeyedStream<FilteredEvent, Object> usersWithAccess = numbers
+        KeyedStream<WindowElement, Object> controlAwareMessages = liveMessages
                 .connect(broadcast)
-                .process(new MyBroadcastProcessFunction())
+                .process(new ControlBroadcastFunction())
                 .assignTimestampsAndWatermarks(MyWatermarkStrategyFactory.filteredEventStrat())
-                .name("Filtering function")
-                .keyBy(event -> event.getControlMessage().getCustomerId() + "_" + event.getControlMessage().getAlertId());
+                .name("ControlBroadcastFunction")
+                .keyBy(event -> event.getControlMessage().getCustomerId() + "_" + event.getControlMessage().getAlertId() + "_" + event.getLiveMessage().getWellId());
 
         // Creates sliding windows based on control messages
-        DataStream<String> userWindowsStream = usersWithAccess
-                .windowAll(new GenericWindowAssigner())
+        DataStream<NotificationCandidate> jsonPathMatchResult = controlAwareMessages
+                .windowAll(new ControlBasedWindowAssigner())
 //                .windowAll(SlidingEventTimeWindows.of(Time.seconds(10), Time.seconds(1)))
-                .allowedLateness(Time.seconds(10))
-                .process(new MyProcessAllWindowFunction())
-                .name("SlidingWindow");
+                .allowedLateness(Time.seconds(ALLOWED_LATENESS_IN_SECS))
+                .process(new JsonPathMatcherFunction())
+                .name("JsonPathMatcherFunction");
 
-//        userWindowsStream.print();
+        SingleOutputStreamOperator<NotificationCandidate> fullWindowResults = jsonPathMatchResult
+                .process(new FullWindowResultsProcessor())
+                .name("FullWindowResults");
+
+        fullWindowResults.print();
 
         log.info("Starting flink job");
 

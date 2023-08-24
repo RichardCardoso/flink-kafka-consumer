@@ -1,11 +1,13 @@
 package models;
 
-public class FilteredEvent {
+import models.control.ControlMessage;
+
+public class WindowElement {
 
     private LiveMessage liveMessage;
     private ControlMessage controlMessage;
 
-    public FilteredEvent(LiveMessage liveMessage, ControlMessage controlMessage) {
+    public WindowElement(LiveMessage liveMessage, ControlMessage controlMessage) {
         this.liveMessage = liveMessage;
         this.controlMessage = controlMessage;
     }

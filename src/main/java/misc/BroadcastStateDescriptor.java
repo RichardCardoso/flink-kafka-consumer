@@ -1,7 +1,6 @@
 package misc;
 
-import models.ControlMessage;
-import org.apache.flink.api.common.state.MapState;
+import models.control.ControlMessage;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;

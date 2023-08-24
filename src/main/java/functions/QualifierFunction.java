@@ -1,13 +1,13 @@
 package functions;
 
-import models.FilteredEvent;
+import models.WindowElement;
 import models.QualifiedEvent;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.util.Collector;
 
-public class QualifierFunction implements FlatMapFunction<FilteredEvent, QualifiedEvent> {
+public class QualifierFunction implements FlatMapFunction<WindowElement, QualifiedEvent> {
     @Override
-    public void flatMap(FilteredEvent value, Collector<QualifiedEvent> out) throws Exception {
+    public void flatMap(WindowElement value, Collector<QualifiedEvent> out) throws Exception {
         try {
 
             // Should only collect if verified, using JsonPath, that the message matches the configured alert

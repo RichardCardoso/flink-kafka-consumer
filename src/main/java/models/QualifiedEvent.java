@@ -1,5 +1,7 @@
 package models;
 
+import models.control.ControlMessage;
+
 public class QualifiedEvent {
 
     private LiveMessage liveMessage;

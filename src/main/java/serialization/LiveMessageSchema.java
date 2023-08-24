@@ -1,6 +1,5 @@
 package serialization;
 
-import models.ControlMessage;
 import models.LiveMessage;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;

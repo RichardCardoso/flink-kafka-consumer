@@ -1,34 +1,35 @@
-package models;
+package models.control;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class Comparison {
 
-    private final List<ComparisonRule<? extends Comparable<?>>> comparisonRules;
+    private List<ComparisonRule> comparisonRules;
 
-    private final ComparisonRange range;
+    private ComparisonRange range;
 
-    public static Comparison of(ComparisonRange range) {
-
-        return new Comparison(range);
+    public List<ComparisonRule> getComparisonRules() {
+        return comparisonRules;
     }
 
-    private Comparison(ComparisonRange range) {
-        this.range = range;
-        comparisonRules = new ArrayList<>();
-    }
-
-    public void addRule(ComparisonRule<? extends Comparable<?>> rule) {
-
-        comparisonRules.add(rule);
-    }
-
-    public List<ComparisonRule<? extends Comparable<?>>> getComparisonRules() {
-        return new ArrayList<>(comparisonRules);
+    public void setComparisonRules(List<ComparisonRule> comparisonRules) {
+        this.comparisonRules = comparisonRules;
     }
 
     public ComparisonRange getRange() {
         return range;
+    }
+
+    public void setRange(ComparisonRange range) {
+        this.range = range;
+    }
+
+    @Override
+    public String toString() {
+        return "Comparison{" +
+                "comparisonRules=" + comparisonRules +
+                ", range=" + range +
+                '}';
     }
 }

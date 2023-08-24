@@ -1,40 +1,63 @@
-package models;
+package models.control;
 
 import java.util.concurrent.TimeUnit;
 
 public class ComparisonRange {
 
-    private final RangeAggregationType aggregationType;
-    private final Long length;
-    private final Long slide;
-    private final TimeUnit timeUnit;
+    private RangeAggregationType aggregationType;
+    private Long length;
+    private Long slide;
+    private TimeUnit timeUnit;
 
-    public static ComparisonRange of(RangeAggregationType aggregationType, Long length, Long slide, TimeUnit timeUnit) {
+    public Long getLengthInMilliseconds() {
 
-        return new ComparisonRange(aggregationType, length, slide, timeUnit);
+        return timeUnit.toMillis(length);
     }
 
-    private ComparisonRange(RangeAggregationType aggregationType, Long length, Long slide, TimeUnit timeUnit) {
+    public Long getSlideInMilliseconds() {
 
-        this.aggregationType = aggregationType;
-        this.length = length;
-        this.slide = slide;
-        this.timeUnit = timeUnit;
+        return timeUnit.toMillis(slide);
     }
 
     public RangeAggregationType getAggregationType() {
         return aggregationType;
     }
 
+    public void setAggregationType(RangeAggregationType aggregationType) {
+        this.aggregationType = aggregationType;
+    }
+
     public Long getLength() {
         return length;
+    }
+
+    public void setLength(Long length) {
+        this.length = length;
     }
 
     public Long getSlide() {
         return slide;
     }
 
+    public void setSlide(Long slide) {
+        this.slide = slide;
+    }
+
     public TimeUnit getTimeUnit() {
         return timeUnit;
+    }
+
+    public void setTimeUnit(TimeUnit timeUnit) {
+        this.timeUnit = timeUnit;
+    }
+
+    @Override
+    public String toString() {
+        return "ComparisonRange{" +
+                "aggregationType=" + aggregationType +
+                ", length=" + length +
+                ", slide=" + slide +
+                ", timeUnit=" + timeUnit +
+                '}';
     }
 }
