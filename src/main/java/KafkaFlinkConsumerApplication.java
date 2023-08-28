@@ -12,6 +12,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
+import org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackend;
+import org.apache.flink.contrib.streaming.state.RocksDBStateBackend;
+import org.apache.flink.runtime.state.StateBackend;
+import org.apache.flink.runtime.state.filesystem.FsStateBackendFactory;
 import org.apache.flink.streaming.api.datastream.BroadcastStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
@@ -49,6 +53,9 @@ public class KafkaFlinkConsumerApplication {
 
         // Configure execution environment
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+        env.setStateBackend(new EmbeddedRocksDBStateBackend());
+
         env.enableCheckpointing(15000);
         CheckpointConfig checkpointConfig = env.getCheckpointConfig();
         checkpointConfig.setMinPauseBetweenCheckpoints(500);
@@ -56,11 +63,7 @@ public class KafkaFlinkConsumerApplication {
         checkpointConfig.setMaxConcurrentCheckpoints(1);
         checkpointConfig.setExternalizedCheckpointCleanup(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
         checkpointConfig.enableUnalignedCheckpoints();
-        if (SystemUtils.IS_OS_WINDOWS) {
-            checkpointConfig.setCheckpointStorage("file:///c:/users/public/flink/checkpoints");
-        } else {
-            checkpointConfig.setCheckpointStorage("file:///var/flink/checkpoints");
-        }
+        checkpointConfig.setCheckpointStorage("file:///var/flink/checkpoints");
 
         // DataSource
         DataStream<LiveMessage> liveMessages = env
